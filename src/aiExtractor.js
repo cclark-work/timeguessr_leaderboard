@@ -35,7 +35,7 @@ async function extractWithAzureOpenAI(imageBuffer) {
   const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
   const deployment = process.env.AZURE_OPENAI_DEPLOYMENT;
   const apiKey = process.env.AZURE_OPENAI_KEY;
-  const apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2024-02-15-preview';
+  const apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2024-10-21';
 
   if (!endpoint || !deployment || !apiKey) {
     return null;

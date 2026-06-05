@@ -24,7 +24,7 @@ If these environment variables are set, uploaded screenshots are sent to Azure O
 - `AZURE_OPENAI_ENDPOINT`
 - `AZURE_OPENAI_DEPLOYMENT`
 - `AZURE_OPENAI_KEY`
-- `AZURE_OPENAI_API_VERSION` (optional, defaults to `2024-02-15-preview`)
+- `AZURE_OPENAI_API_VERSION` (optional, defaults to `2024-10-21`)
 
 When Azure settings are not present, the app uses a local fallback parser that expects the uploaded file content to be JSON in this shape:
 
