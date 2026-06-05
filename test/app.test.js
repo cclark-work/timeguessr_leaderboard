@@ -1,0 +1,67 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const request = require('supertest');
+const { createApp } = require('../src/app');
+const { InMemoryStore } = require('../src/store');
+const { buildDailyLeaderboard } = require('../src/leaderboard');
+
+function sampleAnalysis(base) {
+  return {
+    overallScore: base,
+    stages: Array.from({ length: 5 }, (_, index) => ({
+      score: base + index,
+      distanceKm: 100 - index,
+      yearsOff: index,
+    })),
+  };
+}
+
+test('name lookup uses prior canonical name', () => {
+  const store = new InMemoryStore();
+  store.addEntry('Chris', sampleAnalysis(1000), new Date('2026-01-01T00:00:00Z'));
+  store.addEntry('  chris  ', sampleAnalysis(1001), new Date('2026-01-01T01:00:00Z'));
+
+  const names = store.lookupNames('chr');
+  assert.deepEqual(names, ['Chris']);
+});
+
+test('daily leaderboard calculates top overall and stage leaders', () => {
+  const leaderboard = buildDailyLeaderboard([
+    { name: 'A', overallScore: 1200, stages: sampleAnalysis(1200).stages },
+    {
+      name: 'B',
+      overallScore: 1300,
+      stages: [
+        { score: 1300, distanceKm: 50, yearsOff: 4 },
+        { score: 1200, distanceKm: 40, yearsOff: 3 },
+        { score: 1100, distanceKm: 30, yearsOff: 2 },
+        { score: 1000, distanceKm: 20, yearsOff: 1 },
+        { score: 900, distanceKm: 10, yearsOff: 0 },
+      ],
+    },
+  ]);
+
+  assert.equal(leaderboard.topOverall.name, 'B');
+  assert.equal(leaderboard.highestStageScores[0].name, 'B');
+  assert.equal(leaderboard.closestDistances[4].distanceKm, 10);
+  assert.equal(leaderboard.closestYears[4].yearsOff, 0);
+});
+
+test('upload endpoint stores analyzed screenshot data', async () => {
+  const app = createApp({
+    extractor: async () => sampleAnalysis(1500),
+  });
+
+  const response = await request(app)
+    .post('/api/upload')
+    .field('name', 'Taylor')
+    .attach('screenshot', Buffer.from('fake-image'), { filename: 'shot.png', contentType: 'image/png' });
+
+  assert.equal(response.status, 201);
+  assert.equal(response.body.entry.name, 'Taylor');
+  assert.equal(response.body.entry.stages.length, 5);
+
+  const leaderboardResponse = await request(app).get('/api/leaderboard');
+  assert.equal(leaderboardResponse.status, 200);
+  assert.equal(leaderboardResponse.body.leaderboard.topOverall.name, 'Taylor');
+});

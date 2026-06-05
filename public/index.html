@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Timeguessr Leaderboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 980px; margin: 20px auto; padding: 0 16px; }
+    form { display: grid; gap: 10px; max-width: 420px; margin-bottom: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #f6f6f6; }
+    .error { color: #b00020; }
+    .section-title { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Timeguessr Leaderboard</h1>
+
+  <form id="upload-form">
+    <label>
+      Name
+      <input type="text" id="name" name="name" list="known-names" required>
+      <datalist id="known-names"></datalist>
+    </label>
+    <label>
+      Screenshot
+      <input type="file" id="screenshot" name="screenshot" required>
+    </label>
+    <button type="submit">Upload Result</button>
+    <div id="status"></div>
+  </form>
+
+  <h2 class="section-title">Daily Leaderboard</h2>
+  <div id="leaderboard"></div>
+
+  <script>
+    const nameInput = document.getElementById('name');
+    const knownNames = document.getElementById('known-names');
+    const statusNode = document.getElementById('status');
+    const leaderboardNode = document.getElementById('leaderboard');
+
+    async function loadNames(query = '') {
+      const response = await fetch(`/api/names?q=${encodeURIComponent(query)}`);
+      const payload = await response.json();
+      knownNames.innerHTML = payload.names.map((n) => `<option value="${n}"></option>`).join('');
+    }
+
+    function renderRows(title, rows, valueKey, suffix = '') {
+      return `
+        <h3>${title}</h3>
+        <table>
+          <thead><tr><th>Stage</th><th>Name</th><th>${valueKey}</th></tr></thead>
+          <tbody>
+            ${rows.map((r) => `<tr><td>${r.stage}</td><td>${r.name}</td><td>${r[valueKey]}${suffix}</td></tr>`).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    async function refreshLeaderboard() {
+      const response = await fetch('/api/leaderboard');
+      const payload = await response.json();
+      const lb = payload.leaderboard;
+
+      if (!lb.topOverall) {
+        leaderboardNode.innerHTML = '<p>No entries uploaded today.</p>';
+        return;
+      }
+
+      leaderboardNode.innerHTML = `
+        <p><strong>Top Overall:</strong> ${lb.topOverall.name} (${lb.topOverall.overallScore})</p>
+        ${renderRows('Highest Stage Score', lb.highestStageScores, 'score')}
+        ${renderRows('Closest Distance', lb.closestDistances, 'distanceKm', ' km')}
+        ${renderRows('Closest Year', lb.closestYears, 'yearsOff', ' years')}
+      `;
+    }
+
+    nameInput.addEventListener('input', () => loadNames(nameInput.value));
+
+    document.getElementById('upload-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      statusNode.className = '';
+      statusNode.textContent = 'Uploading...';
+
+      const formData = new FormData(event.target);
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        statusNode.className = 'error';
+        statusNode.textContent = payload.error || 'Upload failed';
+        return;
+      }
+
+      statusNode.textContent = `Saved result for ${payload.entry.name}`;
+      event.target.reset();
+      await loadNames('');
+      await refreshLeaderboard();
+    });
+
+    loadNames('');
+    refreshLeaderboard();
+  </script>
+</body>
+</html>
