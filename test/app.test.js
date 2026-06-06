@@ -47,6 +47,25 @@ test('daily leaderboard calculates top overall and stage leaders', () => {
   assert.equal(leaderboard.closestYears[4].yearsOff, 0);
 });
 
+test('top five overall ranks players by best score and dedupes names', () => {
+  const stages = sampleAnalysis(0).stages;
+  const leaderboard = buildDailyLeaderboard([
+    { name: 'A', overallScore: 1000, stages },
+    { name: 'A', overallScore: 4000, stages }, // A's best should win
+    { name: 'B', overallScore: 3000, stages },
+    { name: 'C', overallScore: 2000, stages },
+    { name: 'D', overallScore: 5000, stages },
+    { name: 'E', overallScore: 1500, stages },
+    { name: 'F', overallScore: 500, stages }, // 6th place, excluded
+  ]);
+
+  assert.deepEqual(
+    leaderboard.topFiveOverall.map((r) => `${r.name}:${r.overallScore}`),
+    ['D:5000', 'A:4000', 'B:3000', 'C:2000', 'E:1500'],
+  );
+  assert.equal(leaderboard.topOverall.name, 'D');
+});
+
 test('upload endpoint stores analyzed screenshot data', async () => {
   const app = createApp({
     extractor: async () => sampleAnalysis(1500),

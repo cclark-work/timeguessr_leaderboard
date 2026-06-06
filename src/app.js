@@ -2,26 +2,34 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const { extractTimeguessrScores } = require('./aiExtractor');
-const { InMemoryStore } = require('./store');
+const { createStore } = require('./store');
 
-function createApp({ store = new InMemoryStore(), extractor = extractTimeguessrScores } = {}) {
+function createApp({ store = createStore(), extractor = extractTimeguessrScores } = {}) {
   const app = express();
   const upload = multer({ storage: multer.memoryStorage() });
 
   app.use(express.json());
   app.use(express.static(path.join(__dirname, '..', 'public')));
 
-  app.get('/api/names', (req, res) => {
-    res.json({ names: store.lookupNames(req.query.q) });
+  app.get('/api/names', async (req, res) => {
+    try {
+      res.json({ names: await store.lookupNames(req.query.q) });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
-  app.get('/api/leaderboard', (req, res) => {
-    const day = req.query.day;
-    res.json({
-      day: day || new Date().toISOString().slice(0, 10),
-      leaderboard: store.getDayLeaderboard(day),
-      entries: store.getDayEntries(day),
-    });
+  app.get('/api/leaderboard', async (req, res) => {
+    try {
+      const day = req.query.day || new Date().toISOString().slice(0, 10);
+      const [leaderboard, entries] = await Promise.all([
+        store.getDayLeaderboard(day),
+        store.getDayEntries(day),
+      ]);
+      res.json({ day, leaderboard, entries });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.post('/api/upload', upload.single('screenshot'), async (req, res) => {
@@ -35,7 +43,7 @@ function createApp({ store = new InMemoryStore(), extractor = extractTimeguessrS
       }
 
       const analysis = await extractor(req.file.buffer);
-      const entry = store.addEntry(name, analysis);
+      const entry = await store.addEntry(name, analysis);
 
       return res.status(201).json({ entry });
     } catch (error) {

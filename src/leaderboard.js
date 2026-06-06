@@ -12,20 +12,35 @@ function updateMin(current, candidate, valueKey) {
   return current;
 }
 
+function buildTopFiveOverall(entries) {
+  // Keep each player's best overall score, then rank the top 5.
+  const bestByName = new Map();
+  for (const entry of entries) {
+    const current = bestByName.get(entry.name);
+    if (!current || entry.overallScore > current.overallScore) {
+      bestByName.set(entry.name, {
+        name: entry.name,
+        overallScore: entry.overallScore,
+      });
+    }
+  }
+
+  return [...bestByName.values()]
+    .sort((a, b) => b.overallScore - a.overallScore)
+    .slice(0, 5);
+}
+
 function buildDailyLeaderboard(entries) {
+  const topFiveOverall = buildTopFiveOverall(entries);
   const result = {
-    topOverall: null,
+    topOverall: topFiveOverall[0] || null,
+    topFiveOverall,
     highestStageScores: Array.from({ length: 5 }, () => null),
     closestDistances: Array.from({ length: 5 }, () => null),
     closestYears: Array.from({ length: 5 }, () => null),
   };
 
   for (const entry of entries) {
-    result.topOverall = updateMax(result.topOverall, {
-      name: entry.name,
-      overallScore: entry.overallScore,
-    }, 'overallScore');
-
     entry.stages.forEach((stage, index) => {
       result.highestStageScores[index] = updateMax(result.highestStageScores[index], {
         stage: index + 1,
