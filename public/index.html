@@ -5,102 +5,240 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Timeguessr Leaderboard</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 980px; margin: 20px auto; padding: 0 16px; }
-    form { display: grid; gap: 10px; max-width: 420px; margin-bottom: 20px; }
-    table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background: #f6f6f6; }
-    .error { color: #b00020; }
-    .section-title { margin-top: 20px; }
+    :root {
+      --bg: #8ed0ea;
+      --bg-2: #b7e2f1;
+      --card: #233b47;
+      --card-2: #2c4856;
+      --line: #3a5a6a;
+      --text: #eaf6fb;
+      --muted: #a9c4d2;
+      --accent: #f5d547;
+      --accent-2: #7ce0c3;
+      --gold: #ffd54a;
+      --silver: #cfd8dc;
+      --bronze: #d8a06a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, Arial, sans-serif;
+      margin: 0;
+      color: #102733;
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+      min-height: 100vh;
+    }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 24px 16px 56px; }
+    header { text-align: center; margin-bottom: 22px; }
+    header h1 {
+      margin: 0; font-size: 2rem; letter-spacing: 0.5px; color: #0d3346;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+    }
+    header p { margin: 6px 0 0; color: #0f4257; opacity: 0.85; }
+
+    .card {
+      background: var(--card); color: var(--text);
+      border-radius: 14px; padding: 18px 20px; margin-bottom: 20px;
+      box-shadow: 0 8px 22px rgba(8,40,55,0.25);
+    }
+    .card h2 { margin: 0 0 14px; font-size: 1.15rem; color: var(--text); }
+
+    form { display: grid; gap: 14px; grid-template-columns: 1fr 1fr auto; align-items: end; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: 0.85rem; color: var(--muted); }
+    input[type="text"], input[type="file"], input[type="date"] {
+      background: var(--card-2); border: 1px solid var(--line); color: var(--text);
+      border-radius: 9px; padding: 10px 12px; font-size: 0.95rem; width: 100%;
+    }
+    input[type="file"] { padding: 8px; }
+    button {
+      background: var(--accent); color: #1d1500; border: none; cursor: pointer;
+      border-radius: 9px; padding: 11px 20px; font-size: 0.95rem; font-weight: 700;
+      transition: transform 0.05s ease, filter 0.15s ease;
+    }
+    button:hover { filter: brightness(1.05); }
+    button:active { transform: translateY(1px); }
+    #status { grid-column: 1 / -1; min-height: 1.2em; font-size: 0.9rem; color: var(--accent-2); }
+    #status.error { color: #ff8a80; }
+
+    .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+    .toolbar .field { flex-direction: row; align-items: center; gap: 8px; }
+    .toolbar input[type="date"] { width: auto; }
+
+    table { border-collapse: collapse; width: 100%; }
+    th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    td { font-size: 0.95rem; }
+    tbody tr:last-child td { border-bottom: none; }
+    .value { color: var(--accent); font-weight: 700; }
+    .rank { width: 38px; text-align: center; font-weight: 700; }
+    .medal { font-size: 1.1rem; }
+
+    .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .empty { color: var(--muted); padding: 8px 2px; }
+
+    @media (max-width: 640px) {
+      form { grid-template-columns: 1fr; }
+      header h1 { font-size: 1.6rem; }
+    }
   </style>
 </head>
 <body>
-  <h1>Timeguessr Leaderboard</h1>
+  <div class="wrap">
+    <header>
+      <h1>🕰️ Timeguessr Leaderboard</h1>
+      <p>Upload your daily result screenshot and see who's on top.</p>
+    </header>
 
-  <form id="upload-form">
-    <label>
-      Name
-      <input type="text" id="name" name="name" list="known-names" required>
-      <datalist id="known-names"></datalist>
-    </label>
-    <label>
-      Screenshot
-      <input type="file" id="screenshot" name="screenshot" required>
-    </label>
-    <button type="submit">Upload Result</button>
-    <div id="status"></div>
-  </form>
+    <section class="card">
+      <h2>Upload a result</h2>
+      <form id="upload-form">
+        <div class="field">
+          <label for="name">Player name</label>
+          <input type="text" id="name" name="name" list="known-names" autocomplete="off" required>
+          <datalist id="known-names"></datalist>
+        </div>
+        <div class="field">
+          <label for="screenshot">Screenshot</label>
+          <input type="file" id="screenshot" name="screenshot" accept="image/*" required>
+        </div>
+        <button type="submit">Upload Result</button>
+        <div id="status"></div>
+      </form>
+    </section>
 
-  <h2 class="section-title">Daily Leaderboard</h2>
-  <div id="leaderboard"></div>
+    <div class="toolbar">
+      <div class="field">
+        <label for="day">Showing</label>
+        <input type="date" id="day">
+      </div>
+    </div>
+
+    <section class="card">
+      <h2>🏆 Top 5 Overall</h2>
+      <div id="top-overall"></div>
+    </section>
+
+    <div class="grid">
+      <section class="card">
+        <h2>🎯 Highest Stage Score</h2>
+        <div id="stage-scores"></div>
+      </section>
+      <section class="card">
+        <h2>📍 Closest Distance</h2>
+        <div id="stage-distances"></div>
+      </section>
+      <section class="card">
+        <h2>📅 Closest Year</h2>
+        <div id="stage-years"></div>
+      </section>
+    </div>
+  </div>
 
   <script>
     const nameInput = document.getElementById('name');
     const knownNames = document.getElementById('known-names');
     const statusNode = document.getElementById('status');
-    const leaderboardNode = document.getElementById('leaderboard');
+    const dayInput = document.getElementById('day');
+    const topOverallNode = document.getElementById('top-overall');
+    const stageScoresNode = document.getElementById('stage-scores');
+    const stageDistancesNode = document.getElementById('stage-distances');
+    const stageYearsNode = document.getElementById('stage-years');
+
+    const MEDALS = ['🥇', '🥈', '🥉'];
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+    const fmt = (n) => Number(n).toLocaleString();
+
+    function todayStr() {
+      return new Date().toISOString().slice(0, 10);
+    }
 
     async function loadNames(query = '') {
       const response = await fetch(`/api/names?q=${encodeURIComponent(query)}`);
       const payload = await response.json();
-      knownNames.innerHTML = payload.names.map((n) => `<option value="${n}"></option>`).join('');
+      knownNames.innerHTML = (payload.names || []).map((n) => `<option value="${esc(n)}"></option>`).join('');
     }
 
-    function renderRows(title, rows, valueKey, suffix = '') {
+    function renderTopOverall(rows) {
+      if (!rows || !rows.length) {
+        return '<p class="empty">No entries yet for this day.</p>';
+      }
       return `
-        <h3>${title}</h3>
         <table>
-          <thead><tr><th>Stage</th><th>Name</th><th>${valueKey}</th></tr></thead>
+          <thead><tr><th class="rank">#</th><th>Player</th><th>Overall Score</th></tr></thead>
           <tbody>
-            ${rows.map((r) => `<tr><td>${r.stage}</td><td>${r.name}</td><td>${r[valueKey]}${suffix}</td></tr>`).join('')}
+            ${rows.map((r, i) => `
+              <tr>
+                <td class="rank">${MEDALS[i] ? `<span class="medal">${MEDALS[i]}</span>` : i + 1}</td>
+                <td>${esc(r.name)}</td>
+                <td class="value">${fmt(r.overallScore)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    function renderStageTable(rows, valueKey, label, format) {
+      const hasAny = rows && rows.some((r) => r);
+      if (!hasAny) {
+        return '<p class="empty">No entries yet for this day.</p>';
+      }
+      return `
+        <table>
+          <thead><tr><th>Stage</th><th>Player</th><th>${label}</th></tr></thead>
+          <tbody>
+            ${rows.map((r, i) => `
+              <tr>
+                <td>${i + 1}</td>
+                <td>${r ? esc(r.name) : '—'}</td>
+                <td class="value">${r ? format(r[valueKey]) : '—'}</td>
+              </tr>`).join('')}
           </tbody>
         </table>`;
     }
 
     async function refreshLeaderboard() {
-      const response = await fetch('/api/leaderboard');
+      const day = dayInput.value || todayStr();
+      const response = await fetch(`/api/leaderboard?day=${encodeURIComponent(day)}`);
       const payload = await response.json();
       const lb = payload.leaderboard;
 
-      if (!lb.topOverall) {
-        leaderboardNode.innerHTML = '<p>No entries uploaded today.</p>';
-        return;
-      }
-
-      leaderboardNode.innerHTML = `
-        <p><strong>Top Overall:</strong> ${lb.topOverall.name} (${lb.topOverall.overallScore})</p>
-        ${renderRows('Highest Stage Score', lb.highestStageScores, 'score')}
-        ${renderRows('Closest Distance', lb.closestDistances, 'distanceKm', ' km')}
-        ${renderRows('Closest Year', lb.closestYears, 'yearsOff', ' years')}
-      `;
+      topOverallNode.innerHTML = renderTopOverall(lb.topFiveOverall);
+      stageScoresNode.innerHTML = renderStageTable(lb.highestStageScores, 'score', 'Score', fmt);
+      stageDistancesNode.innerHTML = renderStageTable(lb.closestDistances, 'distanceKm', 'Distance', (v) => `${fmt(v)} km`);
+      stageYearsNode.innerHTML = renderStageTable(lb.closestYears, 'yearsOff', 'Years off', (v) => `${fmt(v)} yr`);
     }
 
     nameInput.addEventListener('input', () => loadNames(nameInput.value));
+    dayInput.addEventListener('change', refreshLeaderboard);
 
     document.getElementById('upload-form').addEventListener('submit', async (event) => {
       event.preventDefault();
       statusNode.className = '';
-      statusNode.textContent = 'Uploading...';
+      statusNode.textContent = 'Uploading and analyzing screenshot…';
 
       const formData = new FormData(event.target);
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const payload = await response.json();
-      if (!response.ok) {
+      try {
+        const response = await fetch('/api/upload', { method: 'POST', body: formData });
+        const payload = await response.json();
+        if (!response.ok) {
+          statusNode.className = 'error';
+          statusNode.textContent = payload.error || 'Upload failed';
+          return;
+        }
+        statusNode.textContent = `Saved ${esc(payload.entry.name)}'s result (${fmt(payload.entry.overallScore)} pts).`;
+        nameInput.value = '';
+        document.getElementById('screenshot').value = '';
+        dayInput.value = todayStr();
+        await loadNames('');
+        await refreshLeaderboard();
+      } catch (err) {
         statusNode.className = 'error';
-        statusNode.textContent = payload.error || 'Upload failed';
-        return;
+        statusNode.textContent = 'Upload failed: ' + err.message;
       }
-
-      statusNode.textContent = `Saved result for ${payload.entry.name}`;
-      event.target.reset();
-      await loadNames('');
-      await refreshLeaderboard();
     });
 
+    dayInput.value = todayStr();
     loadNames('');
     refreshLeaderboard();
   </script>

@@ -11,8 +11,8 @@ Web app for uploading Timeguessr result screenshots and tracking daily leaders.
   - each stage distance (km)
   - each stage year error
 - Name lookup/autocomplete based on previously uploaded names.
-- Daily leaderboard showing:
-  - top overall score
+- Daily leaderboard (with a date picker to view past days) showing:
+  - top 5 overall scores
   - highest score for each stage
   - closest distance for each stage
   - closest year for each stage
@@ -40,6 +40,19 @@ When Azure settings are not present, the app uses a local fallback parser that e
   ]
 }
 ```
+
+## Persistence
+
+If `AZURE_STORAGE_CONNECTION_STRING` is set, entries and names are stored
+durably in Azure Table Storage (tables `entries`, partitioned by day, and
+`names`). When it is not set, an in-memory store is used (data is lost on
+restart) — convenient for local development and tests.
+
+## Deployment
+
+Pushes to `main` are built, tested, and deployed to Azure App Service
+(`timeguessr-leaderboard`) by [.github/workflows/deploy.yml](.github/workflows/deploy.yml)
+using OIDC federated credentials (no stored secrets).
 
 ## Run
 
