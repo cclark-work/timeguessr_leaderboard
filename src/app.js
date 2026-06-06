@@ -19,6 +19,14 @@ function createApp({ store = createStore(), extractor = extractTimeguessrScores 
     }
   });
 
+  app.get('/api/days', async (req, res) => {
+    try {
+      res.json({ days: await store.listDays() });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get('/api/leaderboard', async (req, res) => {
     try {
       const day = req.query.day || new Date().toISOString().slice(0, 10);
