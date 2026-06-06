@@ -8,6 +8,14 @@ function createApp({ store = createStore(), extractor = extractTimeguessrScores 
   const app = express();
   const upload = multer({ storage: multer.memoryStorage() });
 
+  // Tell browsers to always use HTTPS for this site, so after the first visit
+  // they skip the insecure http -> https redirect hop entirely. (App Service
+  // already 301-redirects http to https via the HTTPS-only setting.)
+  app.use((req, res, next) => {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    next();
+  });
+
   app.use(express.json());
   app.use(express.static(path.join(__dirname, '..', 'public')));
 
