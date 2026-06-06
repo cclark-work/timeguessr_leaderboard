@@ -34,6 +34,13 @@
       text-shadow: 0 1px 0 rgba(255,255,255,0.4);
     }
     header p { margin: 6px 0 0; color: #0f4257; opacity: 0.85; }
+    .instructions {
+      text-align: left; max-width: 640px; margin: 14px auto 0; padding: 14px 20px 14px 40px;
+      background: rgba(255,255,255,0.35); border-radius: 12px; color: #0d3346;
+      line-height: 1.6;
+    }
+    .instructions li { margin: 2px 0; }
+    .instructions a { color: #0a5a86; font-weight: 600; }
 
     .card {
       background: var(--card); color: var(--text);
@@ -86,7 +93,12 @@
   <div class="wrap">
     <header>
       <h1>🕰️ Timeguessr Leaderboard</h1>
-      <p>Upload your daily result screenshot and see who's on top.</p>
+      <ol class="instructions">
+        <li>Play the daily game at <a href="https://timeguessr.com" target="_blank" rel="noopener">https://timeguessr.com</a>.</li>
+        <li>You are not allowed to use any external references (e.g. no Bingling 😁).</li>
+        <li>After your five guesses, you are shown your overall score. Click on "Breakdown" and take a screenshot of your scores.</li>
+        <li>Upload your daily result screenshot and see who's on top.</li>
+      </ol>
     </header>
 
     <section class="card">
