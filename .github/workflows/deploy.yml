@@ -30,6 +30,13 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Generate version.json
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          BUILD_TIME=$(TZ=UTC0 git show -s --date=format-local:'%Y-%m-%dT%H:%M:%SZ' --format=%cd HEAD)
+          printf '{"version":"%s","buildTime":"%s"}\n' "$SHA" "$BUILD_TIME" > public/version.json
+          cat public/version.json
+
       - name: Prune dev dependencies for deployment
         run: npm prune --omit=dev
 
