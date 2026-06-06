@@ -25,6 +25,15 @@ test('name lookup uses prior canonical name', () => {
   assert.deepEqual(names, ['Chris']);
 });
 
+test('listDays returns distinct days with entries, newest first', () => {
+  const store = new InMemoryStore();
+  store.addEntry('A', sampleAnalysis(1000), new Date('2026-01-03T12:00:00Z'));
+  store.addEntry('B', sampleAnalysis(1100), new Date('2026-01-01T12:00:00Z'));
+  store.addEntry('C', sampleAnalysis(1200), new Date('2026-01-03T18:00:00Z'));
+
+  assert.deepEqual(store.listDays(), ['2026-01-03', '2026-01-01']);
+});
+
 test('daily leaderboard calculates top overall and stage leaders', () => {
   const leaderboard = buildDailyLeaderboard([
     { name: 'A', overallScore: 1200, stages: sampleAnalysis(1200).stages },

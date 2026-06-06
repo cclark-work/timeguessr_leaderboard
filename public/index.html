@@ -52,10 +52,11 @@
     form { display: grid; gap: 14px; grid-template-columns: 1fr 1fr auto; align-items: end; }
     .field { display: flex; flex-direction: column; gap: 6px; }
     label { font-size: 0.85rem; color: var(--muted); }
-    input[type="text"], input[type="file"], input[type="date"] {
+    input[type="text"], input[type="file"], select {
       background: var(--card-2); border: 1px solid var(--line); color: var(--text);
       border-radius: 9px; padding: 10px 12px; font-size: 0.95rem; width: 100%;
     }
+    select:disabled { opacity: 0.6; cursor: not-allowed; }
     input[type="file"] { padding: 8px; }
     button {
       background: var(--accent); color: #1d1500; border: none; cursor: pointer;
@@ -69,7 +70,7 @@
 
     .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
     .toolbar .field { flex-direction: row; align-items: center; gap: 8px; }
-    .toolbar input[type="date"] { width: auto; }
+    .toolbar select { width: auto; min-width: 180px; }
 
     table { border-collapse: collapse; width: 100%; }
     th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--line); }
@@ -121,7 +122,7 @@
     <div class="toolbar">
       <div class="field">
         <label for="day">Showing</label>
-        <input type="date" id="day">
+        <select id="day"></select>
       </div>
     </div>
 
@@ -164,6 +165,33 @@
 
     function todayStr() {
       return new Date().toISOString().slice(0, 10);
+    }
+
+    function formatDay(d) {
+      const [y, m, day] = d.split('-').map(Number);
+      return new Date(y, m - 1, day).toLocaleDateString(undefined, {
+        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+      });
+    }
+
+    // Populate the picker with only the days that have recorded scores.
+    async function loadDays(preferred) {
+      const response = await fetch('/api/days');
+      const payload = await response.json();
+      const days = payload.days || [];
+
+      if (!days.length) {
+        dayInput.innerHTML = '<option value="">No scores yet</option>';
+        dayInput.disabled = true;
+        return;
+      }
+
+      dayInput.disabled = false;
+      const selected = preferred && days.includes(preferred) ? preferred : days[0];
+      dayInput.innerHTML = days
+        .map((d) => `<option value="${d}"${d === selected ? ' selected' : ''}>${esc(formatDay(d))}</option>`)
+        .join('');
+      dayInput.value = selected;
     }
 
     async function loadNames(query = '') {
@@ -241,8 +269,8 @@
         statusNode.textContent = `Saved ${esc(payload.entry.name)}'s result (${fmt(payload.entry.overallScore)} pts).`;
         nameInput.value = '';
         document.getElementById('screenshot').value = '';
-        dayInput.value = todayStr();
         await loadNames('');
+        await loadDays(payload.entry.date);
         await refreshLeaderboard();
       } catch (err) {
         statusNode.className = 'error';
@@ -250,9 +278,11 @@
       }
     });
 
-    dayInput.value = todayStr();
     loadNames('');
-    refreshLeaderboard();
+    (async () => {
+      await loadDays();
+      await refreshLeaderboard();
+    })();
   </script>
 </body>
 </html>

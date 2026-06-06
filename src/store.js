@@ -61,6 +61,11 @@ class InMemoryStore {
   getDayLeaderboard(day = today()) {
     return buildDailyLeaderboard(this.getDayEntries(day));
   }
+
+  listDays() {
+    const days = [...new Set(this.entries.map((entry) => entry.date))];
+    return days.sort().reverse();
+  }
 }
 
 const ENTRIES_TABLE = 'entries';
@@ -166,6 +171,18 @@ class TableStore {
 
   async getDayLeaderboard(day = today()) {
     return buildDailyLeaderboard(await this.getDayEntries(day));
+  }
+
+  async listDays() {
+    await this.ensureTables();
+    const days = new Set();
+    const iterator = this.entriesClient.listEntities({
+      queryOptions: { select: ['PartitionKey'] },
+    });
+    for await (const entity of iterator) {
+      days.add(entity.partitionKey);
+    }
+    return [...days].sort().reverse();
   }
 }
 
