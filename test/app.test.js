@@ -51,9 +51,35 @@ test('daily leaderboard calculates top overall and stage leaders', () => {
   ]);
 
   assert.equal(leaderboard.topOverall.name, 'B');
-  assert.equal(leaderboard.highestStageScores[0].name, 'B');
-  assert.equal(leaderboard.closestDistances[4].distanceKm, 10);
-  assert.equal(leaderboard.closestYears[4].yearsOff, 0);
+  assert.equal(leaderboard.highestStageScores[0][0].name, 'B');
+  assert.equal(leaderboard.closestDistances[4][0].distanceKm, 10);
+  assert.equal(leaderboard.closestYears[4][0].yearsOff, 0);
+});
+
+test('stage tables keep the top 5 per stage, best value per player', () => {
+  const stage = (score) => ({ score, distanceKm: 50, yearsOff: 2 });
+  const entry = (name, s1) => ({
+    name,
+    overallScore: s1,
+    stages: [stage(s1), stage(1), stage(1), stage(1), stage(1)],
+  });
+
+  const leaderboard = buildDailyLeaderboard([
+    entry('A', 100),
+    entry('B', 200),
+    entry('C', 300),
+    entry('D', 400),
+    entry('E', 500),
+    entry('F', 600),
+    entry('A', 250), // A's best stage-1 score becomes 250
+  ]);
+
+  const stageOne = leaderboard.highestStageScores[0];
+  assert.equal(stageOne.length, 5); // top 5 of six distinct players
+  assert.deepEqual(stageOne.map((r) => r.name), ['F', 'E', 'D', 'C', 'A']);
+  assert.equal(stageOne[0].score, 600);
+  assert.equal(stageOne[4].score, 250); // deduped A at their best, B(200) excluded
+  assert.equal(stageOne[0].stage, 1);
 });
 
 test('top five overall ranks players by best score and dedupes names', () => {

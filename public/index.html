@@ -82,6 +82,12 @@
     .value { color: var(--accent); font-weight: 700; }
     .rank { width: 38px; text-align: center; font-weight: 700; }
     .medal { font-size: 1.1rem; }
+    .stage-head td {
+      background: var(--card-2); color: var(--accent-2); font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;
+      border-top: 2px solid var(--line);
+    }
+    tbody.stage-group:first-of-type .stage-head td { border-top: none; }
 
     .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
     .empty { color: var(--muted); padding: 8px 2px; }
@@ -224,22 +230,27 @@
         </table>`;
     }
 
-    function renderStageTable(rows, valueKey, label, format) {
-      const hasAny = rows && rows.some((r) => r);
+    // Each table groups the top 5 players for every stage (up to 25 rows).
+    function renderStageTable(stages, valueKey, label, format) {
+      const hasAny = stages && stages.some((list) => list && list.length);
       if (!hasAny) {
         return '<p class="empty">No entries yet for this day.</p>';
       }
       return `
         <table>
-          <thead><tr><th>Stage</th><th>Player</th><th>${label}</th></tr></thead>
-          <tbody>
-            ${rows.map((r, i) => `
-              <tr>
-                <td>${i + 1}</td>
-                <td>${r ? esc(r.name) : '—'}</td>
-                <td class="value">${r ? format(r[valueKey]) : '—'}</td>
-              </tr>`).join('')}
-          </tbody>
+          <thead><tr><th class="rank">#</th><th>Player</th><th>${label}</th></tr></thead>
+          ${stages.map((list, i) => `
+            <tbody class="stage-group">
+              <tr class="stage-head"><td colspan="3">Stage ${i + 1}</td></tr>
+              ${(list && list.length)
+                ? list.map((r, j) => `
+                  <tr>
+                    <td class="rank">${j + 1}</td>
+                    <td>${esc(r.name)}</td>
+                    <td class="value">${format(r[valueKey])}</td>
+                  </tr>`).join('')
+                : '<tr><td class="rank">—</td><td class="empty">No entries</td><td>—</td></tr>'}
+            </tbody>`).join('')}
         </table>`;
     }
 
