@@ -48,16 +48,6 @@ durably in Azure Table Storage (tables `entries`, partitioned by day, and
 `names`). When it is not set, an in-memory store is used (data is lost on
 restart) — convenient for local development and tests.
 
-## Microsoft Teams notifications
-
-If `TEAMS_WEBHOOK_URL` is set, a card is posted to a Teams channel after each
-successful upload (player name + overall score, with a link to the leaderboard).
-Create the URL in Teams via **channel ⋯ → Workflows → "Post to a channel when a
-webhook request is received"**, then set `TEAMS_WEBHOOK_URL` to the generated
-HTTPS URL. `APP_BASE_URL` (optional) controls the link in the card. When
-`TEAMS_WEBHOOK_URL` is unset, notifications are skipped; a Teams failure never
-fails an upload.
-
 ## Deployment
 
 Pushes to `main` are built, tested, and deployed to Azure App Service
