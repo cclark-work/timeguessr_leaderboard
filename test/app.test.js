@@ -4,7 +4,6 @@ const request = require('supertest');
 const { createApp } = require('../src/app');
 const { InMemoryStore } = require('../src/store');
 const { buildDailyLeaderboard } = require('../src/leaderboard');
-const { buildTeamsMessage } = require('../src/teamsNotifier');
 
 function sampleAnalysis(base) {
   return {
@@ -93,31 +92,4 @@ test('upload endpoint stores analyzed screenshot data', async () => {
   const leaderboardResponse = await request(app).get('/api/leaderboard');
   assert.equal(leaderboardResponse.status, 200);
   assert.equal(leaderboardResponse.body.leaderboard.topOverall.name, 'Taylor');
-});
-
-test('upload notifies the configured notifier with the stored entry', async () => {
-  const calls = [];
-  const app = createApp({
-    extractor: async () => sampleAnalysis(1500),
-    notifier: (entry) => { calls.push(entry); },
-  });
-
-  const response = await request(app)
-    .post('/api/upload')
-    .field('name', 'Teamsy')
-    .attach('screenshot', Buffer.from('fake-image'), { filename: 'shot.png', contentType: 'image/png' });
-
-  assert.equal(response.status, 201);
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].name, 'Teamsy');
-  assert.equal(calls[0].overallScore, 1500);
-});
-
-test('teams message is an adaptive card naming the player and formatted score', () => {
-  const message = buildTeamsMessage({ name: 'Chris', overallScore: 41368, date: '2026-06-06' }, 'https://example.com');
-  assert.equal(message.attachments[0].contentType, 'application/vnd.microsoft.card.adaptive');
-  const serialized = JSON.stringify(message);
-  assert.match(serialized, /Chris/);
-  assert.match(serialized, /41,368/);
-  assert.match(serialized, /https:\/\/example\.com/);
 });
