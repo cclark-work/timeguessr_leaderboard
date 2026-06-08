@@ -3,8 +3,13 @@ const multer = require('multer');
 const path = require('path');
 const { extractTimeguessrScores } = require('./aiExtractor');
 const { createStore } = require('./store');
+const { notifyTeams } = require('./teamsNotifier');
 
-function createApp({ store = createStore(), extractor = extractTimeguessrScores } = {}) {
+function createApp({
+  store = createStore(),
+  extractor = extractTimeguessrScores,
+  notifier = notifyTeams,
+} = {}) {
   const app = express();
   const upload = multer({ storage: multer.memoryStorage() });
 
@@ -60,6 +65,9 @@ function createApp({ store = createStore(), extractor = extractTimeguessrScores 
 
       const analysis = await extractor(req.file.buffer);
       const entry = await store.addEntry(name, analysis);
+
+      // Fire-and-forget: notifying Teams must not delay or fail the response.
+      Promise.resolve(notifier(entry)).catch(() => {});
 
       return res.status(201).json({ entry });
     } catch (error) {
