@@ -199,7 +199,7 @@ test('validateAnalysis rejects stage with missing distanceUnit', () => {
     })),
   };
 
-  assert.throws(() => validateAnalysis(data), /Stage 3 has an unrecognised distanceUnit/);
+  assert.throws(() => validateAnalysis(data), /Stage 3 has an unrecognized distanceUnit/);
 });
 
 test('validateAnalysis rejects stage with unknown distanceUnit', () => {
@@ -213,7 +213,7 @@ test('validateAnalysis rejects stage with unknown distanceUnit', () => {
     })),
   };
 
-  assert.throws(() => validateAnalysis(data), /Stage 2 has an unrecognised distanceUnit "miles"/);
+  assert.throws(() => validateAnalysis(data), /Stage 2 has an unrecognized distanceUnit "miles"/);
 });
 
 test('validateAnalysis rejects stage with missing distance', () => {

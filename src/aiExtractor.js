@@ -7,7 +7,7 @@
  * a bare finite number in distanceKm is treated as already in km.
  *
  * Throws a descriptive error (naming the 1-based stage index) for any
- * missing or unrecognised value so validation failures are easy to diagnose.
+ * missing or unrecognized value so validation failures are easy to diagnose.
  */
 function resolveDistanceKm(stage, index) {
   // New shape: { distance: number, distanceUnit: "m"|"km" }
@@ -19,7 +19,7 @@ function resolveDistanceKm(stage, index) {
     if (unit === 'km') return stage.distance;
     if (unit === 'm') return stage.distance / 1000;
     throw new Error(
-      `Stage ${index + 1} has an unrecognised distanceUnit "${stage.distanceUnit}". Expected "m" or "km".`,
+      `Stage ${index + 1} has an unrecognized distanceUnit "${stage.distanceUnit}". Expected "m" or "km".`,
     );
   }
 
