@@ -4,6 +4,7 @@ const request = require('supertest');
 const { createApp } = require('../src/app');
 const { InMemoryStore } = require('../src/store');
 const { buildDailyLeaderboard } = require('../src/leaderboard');
+const { validateAnalysis } = require('../src/aiExtractor');
 
 function sampleAnalysis(base) {
   return {
@@ -118,4 +119,39 @@ test('upload endpoint stores analyzed screenshot data', async () => {
   const leaderboardResponse = await request(app).get('/api/leaderboard');
   assert.equal(leaderboardResponse.status, 200);
   assert.equal(leaderboardResponse.body.leaderboard.topOverall.name, 'Taylor');
+});
+
+test('validateAnalysis converts meter string distances to kilometers', () => {
+  const stageWithMeters = (distanceKm) => ({ score: 1000, distanceKm, yearsOff: 1 });
+  const data = {
+    overallScore: 5000,
+    stages: [
+      stageWithMeters('500m'),
+      stageWithMeters('1500 m'),
+      stageWithMeters('2.5km'),
+      stageWithMeters('10 km'),
+      stageWithMeters(8),
+    ],
+  };
+
+  const result = validateAnalysis(data);
+
+  assert.equal(result.stages[0].distanceKm, 0.5);
+  assert.equal(result.stages[1].distanceKm, 1.5);
+  assert.equal(result.stages[2].distanceKm, 2.5);
+  assert.equal(result.stages[3].distanceKm, 10);
+  assert.equal(result.stages[4].distanceKm, 8);
+});
+
+test('validateAnalysis rejects stages with invalid distanceKm', () => {
+  const data = {
+    overallScore: 5000,
+    stages: Array.from({ length: 5 }, (_, i) => ({
+      score: 1000,
+      distanceKm: i === 2 ? 'invalid' : 10,
+      yearsOff: 0,
+    })),
+  };
+
+  assert.throws(() => validateAnalysis(data), /Stage 3 is missing a valid distanceKm/);
 });

@@ -1,4 +1,17 @@
-const REQUIRED_STAGE_FIELDS = ['score', 'distanceKm', 'yearsOff'];
+function parseDistanceKm(value) {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const lower = value.trim().toLowerCase();
+    if (lower.endsWith('km')) {
+      const num = parseFloat(lower);
+      if (Number.isFinite(num)) return num;
+    } else if (lower.endsWith('m')) {
+      const num = parseFloat(lower);
+      if (Number.isFinite(num)) return num / 1000;
+    }
+  }
+  return NaN;
+}
 
 function validateAnalysis(data) {
   if (!data || typeof data !== 'object') {
@@ -14,10 +27,15 @@ function validateAnalysis(data) {
   }
 
   data.stages.forEach((stage, index) => {
-    for (const field of REQUIRED_STAGE_FIELDS) {
-      if (!Number.isFinite(stage[field])) {
-        throw new Error(`Stage ${index + 1} is missing a valid ${field}.`);
-      }
+    const distanceKm = parseDistanceKm(stage.distanceKm);
+    if (!Number.isFinite(stage.score)) {
+      throw new Error(`Stage ${index + 1} is missing a valid score.`);
+    }
+    if (!Number.isFinite(distanceKm)) {
+      throw new Error(`Stage ${index + 1} is missing a valid distanceKm.`);
+    }
+    if (!Number.isFinite(stage.yearsOff)) {
+      throw new Error(`Stage ${index + 1} is missing a valid yearsOff.`);
     }
   });
 
@@ -25,7 +43,7 @@ function validateAnalysis(data) {
     overallScore: data.overallScore,
     stages: data.stages.map((stage) => ({
       score: stage.score,
-      distanceKm: stage.distanceKm,
+      distanceKm: parseDistanceKm(stage.distanceKm),
       yearsOff: stage.yearsOff,
     })),
   };
@@ -54,14 +72,19 @@ async function extractWithAzureOpenAI(imageBuffer) {
       messages: [
         {
           role: 'system',
-          content: 'Extract Timeguessr results and respond with strict JSON only.',
+          content:
+            'Extract Timeguessr results and respond with strict JSON only. ' +
+            'Always express distances in kilometers. ' +
+            'If a distance is shown in meters (e.g. "500 m"), divide by 1000 to convert to km (e.g. 0.5).',
         },
         {
           role: 'user',
           content: [
             {
               type: 'text',
-              text: 'Return JSON: {"overallScore":number,"stages":[{"score":number,"distanceKm":number,"yearsOff":number} x5]}.',
+              text:
+                'Return JSON: {"overallScore":number,"stages":[{"score":number,"distanceKm":number,"yearsOff":number} x5]}. ' +
+                'For each stage, read the distance unit shown (m or km). If the unit is meters, divide by 1000 so distanceKm is always in kilometers.',
             },
             {
               type: 'image_url',
