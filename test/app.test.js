@@ -121,37 +121,127 @@ test('upload endpoint stores analyzed screenshot data', async () => {
   assert.equal(leaderboardResponse.body.leaderboard.topOverall.name, 'Taylor');
 });
 
-test('validateAnalysis converts meter string distances to kilometers', () => {
-  const stageWithMeters = (distanceKm) => ({ score: 1000, distanceKm, yearsOff: 1 });
+test('validateAnalysis converts meters to kilometers using {distance, distanceUnit}', () => {
+  const stage = (distance, distanceUnit) => ({ score: 1000, distance, distanceUnit, yearsOff: 1 });
   const data = {
     overallScore: 5000,
     stages: [
-      stageWithMeters('500m'),
-      stageWithMeters('1500 m'),
-      stageWithMeters('2.5km'),
-      stageWithMeters('10 km'),
-      stageWithMeters(8),
+      stage(934.5, 'm'),
+      stage(1396.3, 'km'),
+      stage(130.6, 'm'),
+      stage(797.4, 'm'),
+      stage(8.8, 'km'),
+    ],
+  };
+
+  const result = validateAnalysis(data);
+
+  assert.equal(result.stages[0].distanceKm, 0.9345);
+  assert.equal(result.stages[1].distanceKm, 1396.3);
+  assert.equal(result.stages[2].distanceKm, 0.1306);
+  assert.equal(result.stages[3].distanceKm, 0.7974);
+  assert.equal(result.stages[4].distanceKm, 8.8);
+});
+
+test('validateAnalysis accepts mixed-case distanceUnit', () => {
+  const stage = (distance, distanceUnit) => ({ score: 1000, distance, distanceUnit, yearsOff: 1 });
+  const data = {
+    overallScore: 5000,
+    stages: [
+      stage(500, 'M'),
+      stage(2, 'KM'),
+      stage(300, 'M'),
+      stage(1, 'Km'),
+      stage(100, 'm'),
     ],
   };
 
   const result = validateAnalysis(data);
 
   assert.equal(result.stages[0].distanceKm, 0.5);
-  assert.equal(result.stages[1].distanceKm, 1.5);
-  assert.equal(result.stages[2].distanceKm, 2.5);
-  assert.equal(result.stages[3].distanceKm, 10);
-  assert.equal(result.stages[4].distanceKm, 8);
+  assert.equal(result.stages[1].distanceKm, 2);
+  assert.equal(result.stages[2].distanceKm, 0.3);
+  assert.equal(result.stages[3].distanceKm, 1);
+  assert.equal(result.stages[4].distanceKm, 0.1);
 });
 
-test('validateAnalysis rejects stages with invalid distanceKm', () => {
+test('validateAnalysis full screenshot example: km, m, m, m, km', () => {
+  const stage = (distance, distanceUnit) => ({ score: 5000, distance, distanceUnit, yearsOff: 1 });
+  const data = {
+    overallScore: 30000,
+    stages: [
+      stage(1396.3, 'km'),
+      stage(934.5, 'm'),
+      stage(130.6, 'm'),
+      stage(797.4, 'm'),
+      stage(8.8, 'km'),
+    ],
+  };
+
+  const result = validateAnalysis(data);
+  const km = result.stages.map((s) => s.distanceKm);
+
+  assert.equal(km[0], 1396.3);
+  assert.equal(km[1], 0.9345);
+  assert.equal(km[2], 0.1306);
+  assert.equal(km[3], 0.7974);
+  assert.equal(km[4], 8.8);
+});
+
+test('validateAnalysis rejects stage with missing distanceUnit', () => {
   const data = {
     overallScore: 5000,
     stages: Array.from({ length: 5 }, (_, i) => ({
       score: 1000,
-      distanceKm: i === 2 ? 'invalid' : 10,
+      distance: 100,
+      distanceUnit: i === 2 ? undefined : 'km',
       yearsOff: 0,
     })),
   };
 
-  assert.throws(() => validateAnalysis(data), /Stage 3 is missing a valid distanceKm/);
+  assert.throws(() => validateAnalysis(data), /Stage 3 has an unrecognized distanceUnit/);
+});
+
+test('validateAnalysis rejects stage with unknown distanceUnit', () => {
+  const data = {
+    overallScore: 5000,
+    stages: Array.from({ length: 5 }, (_, i) => ({
+      score: 1000,
+      distance: 100,
+      distanceUnit: i === 1 ? 'miles' : 'km',
+      yearsOff: 0,
+    })),
+  };
+
+  assert.throws(() => validateAnalysis(data), /Stage 2 has an unrecognized distanceUnit "miles"/);
+});
+
+test('validateAnalysis rejects stage with missing distance', () => {
+  const data = {
+    overallScore: 5000,
+    stages: Array.from({ length: 5 }, (_, i) => ({
+      score: 1000,
+      distance: i === 3 ? undefined : 100,
+      distanceUnit: 'km',
+      yearsOff: 0,
+    })),
+  };
+
+  assert.throws(() => validateAnalysis(data), /Stage 4 is missing a valid distance/);
+});
+
+test('validateAnalysis accepts legacy distanceKm number shape', () => {
+  // The text fallback may upload the old { distanceKm: number } format.
+  const data = {
+    overallScore: 5000,
+    stages: Array.from({ length: 5 }, (_, i) => ({
+      score: 1000,
+      distanceKm: 10 + i,
+      yearsOff: 0,
+    })),
+  };
+
+  const result = validateAnalysis(data);
+  assert.equal(result.stages[0].distanceKm, 10);
+  assert.equal(result.stages[4].distanceKm, 14);
 });

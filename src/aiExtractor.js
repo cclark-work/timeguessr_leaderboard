@@ -1,16 +1,34 @@
-function parseDistanceKm(value) {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') {
-    const lower = value.trim().toLowerCase();
-    if (lower.endsWith('km')) {
-      const num = parseFloat(lower);
-      if (Number.isFinite(num)) return num;
-    } else if (lower.endsWith('m')) {
-      const num = parseFloat(lower);
-      if (Number.isFinite(num)) return num / 1000;
+/**
+ * Convert a stage's raw distance value + unit to kilometres.
+ *
+ * Accepts the new AI shape { distance, distanceUnit } where distanceUnit is
+ * "m" or "km" (case-insensitive).  For backwards-compatibility with the text
+ * fallback (which may still upload the legacy { distanceKm: number } shape),
+ * a bare finite number in distanceKm is treated as already in km.
+ *
+ * Throws a descriptive error (naming the 1-based stage index) for any
+ * missing or unrecognized value so validation failures are easy to diagnose.
+ */
+function resolveDistanceKm(stage, index) {
+  // New shape: { distance: number, distanceUnit: "m"|"km" }
+  if (stage.distance !== undefined || stage.distanceUnit !== undefined) {
+    if (!Number.isFinite(stage.distance)) {
+      throw new Error(`Stage ${index + 1} is missing a valid distance.`);
     }
+    const unit = typeof stage.distanceUnit === 'string' ? stage.distanceUnit.trim().toLowerCase() : '';
+    if (unit === 'km') return stage.distance;
+    if (unit === 'm') return stage.distance / 1000;
+    throw new Error(
+      `Stage ${index + 1} has an unrecognized distanceUnit "${stage.distanceUnit}". Expected "m" or "km".`,
+    );
   }
-  return NaN;
+
+  // Legacy shape: { distanceKm: number } — treat bare number as already-km.
+  if (Number.isFinite(stage.distanceKm)) {
+    return stage.distanceKm;
+  }
+
+  throw new Error(`Stage ${index + 1} is missing a valid distance.`);
 }
 
 function validateAnalysis(data) {
@@ -26,26 +44,18 @@ function validateAnalysis(data) {
     throw new Error('AI analysis must include exactly 5 stages.');
   }
 
-  data.stages.forEach((stage, index) => {
-    const distanceKm = parseDistanceKm(stage.distanceKm);
-    if (!Number.isFinite(stage.score)) {
-      throw new Error(`Stage ${index + 1} is missing a valid score.`);
-    }
-    if (!Number.isFinite(distanceKm)) {
-      throw new Error(`Stage ${index + 1} is missing a valid distanceKm.`);
-    }
-    if (!Number.isFinite(stage.yearsOff)) {
-      throw new Error(`Stage ${index + 1} is missing a valid yearsOff.`);
-    }
-  });
-
   return {
     overallScore: data.overallScore,
-    stages: data.stages.map((stage) => ({
-      score: stage.score,
-      distanceKm: parseDistanceKm(stage.distanceKm),
-      yearsOff: stage.yearsOff,
-    })),
+    stages: data.stages.map((stage, index) => {
+      if (!Number.isFinite(stage.score)) {
+        throw new Error(`Stage ${index + 1} is missing a valid score.`);
+      }
+      const distanceKm = resolveDistanceKm(stage, index);
+      if (!Number.isFinite(stage.yearsOff)) {
+        throw new Error(`Stage ${index + 1} is missing a valid yearsOff.`);
+      }
+      return { score: stage.score, distanceKm, yearsOff: stage.yearsOff };
+    }),
   };
 }
 
@@ -74,8 +84,7 @@ async function extractWithAzureOpenAI(imageBuffer) {
           role: 'system',
           content:
             'Extract Timeguessr results and respond with strict JSON only. ' +
-            'Always express distances in kilometers. ' +
-            'If a distance is shown in meters (e.g. "500 m"), divide by 1000 to convert to km (e.g. 0.5).',
+            'Transcribe the distance value and unit exactly as shown on screen — do not convert or do any arithmetic.',
         },
         {
           role: 'user',
@@ -83,8 +92,8 @@ async function extractWithAzureOpenAI(imageBuffer) {
             {
               type: 'text',
               text:
-                'Return JSON: {"overallScore":number,"stages":[{"score":number,"distanceKm":number,"yearsOff":number} x5]}. ' +
-                'For each stage, read the distance unit shown (m or km). If the unit is meters, divide by 1000 so distanceKm is always in kilometers.',
+                'Return JSON: {"overallScore":number,"stages":[{"score":number,"distance":number,"distanceUnit":"km"|"m","yearsOff":number} x5]}. ' +
+                'For each stage, read the distance number and the unit (m or km) as separate fields.',
             },
             {
               type: 'image_url',
