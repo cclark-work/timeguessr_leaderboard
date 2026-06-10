@@ -54,7 +54,7 @@
     form { display: grid; gap: 14px; grid-template-columns: 1fr 1fr auto; align-items: end; }
     .field { display: flex; flex-direction: column; gap: 6px; }
     label { font-size: 0.85rem; color: var(--muted); }
-    input[type="text"], input[type="file"], select {
+    input[type="text"], input[type="file"], input[type="date"], select {
       background: var(--card-2); border: 1px solid var(--line); color: var(--text);
       border-radius: 9px; padding: 10px 12px; font-size: 0.95rem; width: 100%;
     }
@@ -72,7 +72,8 @@
 
     .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
     .toolbar .field { flex-direction: row; align-items: center; gap: 8px; }
-    .toolbar select { width: auto; min-width: 180px; }
+    .toolbar select,
+    .toolbar input[type="date"] { width: auto; min-width: 180px; }
 
     table { border-collapse: collapse; width: 100%; }
     th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--line); }
@@ -132,7 +133,7 @@
     <div class="toolbar">
       <div class="field">
         <label for="day">Showing</label>
-        <select id="day"></select>
+        <input type="date" id="day">
       </div>
     </div>
 
@@ -179,27 +180,28 @@
       return new Date().toISOString().slice(0, 10);
     }
 
-    function formatDay(d) {
-      const [y, m, day] = d.split('-').map(Number);
-      return new Date(y, m - 1, day).toLocaleDateString(undefined, {
-        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
-      });
+    function isValidDay(day) {
+      return /^\d{4}-\d{2}-\d{2}$/.test(day);
     }
 
-    // Populate the picker with only the days that have recorded scores.
     async function loadDays(preferred) {
-      const response = await fetch('/api/days');
-      const payload = await response.json();
-      const days = payload.days || [];
-
-      dayInput.disabled = false;
       const today = todayStr();
-      const allDays = days.includes(today) ? days : [today, ...days];
-      const selected = preferred && allDays.includes(preferred) ? preferred : allDays[0];
-      dayInput.innerHTML = allDays
-        .map((d) => `<option value="${d}"${d === selected ? ' selected' : ''}>${esc(formatDay(d))}</option>`)
-        .join('');
+      dayInput.max = today;
+      const selected = isValidDay(preferred) && preferred <= today ? preferred : today;
       dayInput.value = selected;
+
+      try {
+        const response = await fetch('/api/days');
+        const payload = await response.json();
+        const days = Array.isArray(payload.days) ? payload.days.filter(isValidDay).sort() : [];
+        if (days.length) {
+          dayInput.min = days[0];
+        } else {
+          dayInput.removeAttribute('min');
+        }
+      } catch {
+        dayInput.removeAttribute('min');
+      }
     }
 
     async function loadNames(query = '') {
