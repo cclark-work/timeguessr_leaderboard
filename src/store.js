@@ -6,10 +6,14 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function buildEntry({ id, day, name, analysis, createdAt }) {
+function dayFromCreatedAt(createdAt) {
+  return String(createdAt).slice(0, 10);
+}
+
+function buildEntry({ id, name, analysis, createdAt }) {
   return {
     id,
-    date: day,
+    date: dayFromCreatedAt(createdAt),
     name,
     overallScore: analysis.overallScore,
     stages: analysis.stages,
@@ -35,7 +39,6 @@ class InMemoryStore {
 
     const entry = buildEntry({
       id: this.entries.length + 1,
-      day: date.toISOString().slice(0, 10),
       name,
       analysis,
       createdAt: date.toISOString(),
@@ -55,7 +58,12 @@ class InMemoryStore {
   }
 
   getDayEntries(day = today()) {
-    return this.entries.filter((entry) => entry.date === day);
+    return this.entries
+      .filter((entry) => dayFromCreatedAt(entry.createdAt) === day)
+      .map((entry) => ({
+        ...entry,
+        date: dayFromCreatedAt(entry.createdAt),
+      }));
   }
 
   getDayLeaderboard(day = today()) {
@@ -63,12 +71,13 @@ class InMemoryStore {
   }
 
   listDays() {
-    const days = [...new Set(this.entries.map((entry) => entry.date))];
+    const days = [...new Set(this.entries.map((entry) => dayFromCreatedAt(entry.createdAt)))];
     return days.sort().reverse();
   }
 }
 
 const ENTRIES_TABLE = 'entries';
+const ENTRIES_PARTITION = 'entries';
 const NAMES_TABLE = 'names';
 const NAMES_PARTITION = 'name';
 
@@ -82,9 +91,10 @@ async function ignoreExists(promise) {
   }
 }
 
-// Durable store backed by Azure Table Storage. Entries are partitioned by day
-// (YYYY-MM-DD); canonical names live in a small companion table for lookups and
-// to keep name resolution stable across restarts.
+// Durable store backed by Azure Table Storage. Entries share one stable
+// partition and are grouped by createdAt at read time; canonical names live in a
+// small companion table for lookups and to keep name resolution stable across
+// restarts.
 class TableStore {
   constructor(connectionString) {
     this.entriesClient = TableClient.fromConnectionString(connectionString, ENTRIES_TABLE);
@@ -125,11 +135,10 @@ class TableStore {
     );
 
     const createdAt = date.toISOString();
-    const day = createdAt.slice(0, 10);
     const rowKey = `${createdAt}_${Math.random().toString(36).slice(2, 8)}`;
 
     await this.entriesClient.createEntity({
-      partitionKey: day,
+      partitionKey: ENTRIES_PARTITION,
       rowKey,
       name,
       overallScore: analysis.overallScore,
@@ -137,7 +146,7 @@ class TableStore {
       createdAt,
     });
 
-    return buildEntry({ id: rowKey, day, name, analysis, createdAt });
+    return buildEntry({ id: rowKey, name, analysis, createdAt });
   }
 
   async lookupNames(query = '') {
@@ -152,14 +161,25 @@ class TableStore {
 
   async getDayEntries(day = today()) {
     await this.ensureTables();
+    const start = new Date(`${day}T00:00:00.000Z`);
+    if (Number.isNaN(start.getTime())) {
+      return [];
+    }
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 1);
+
     const entries = [];
     const iterator = this.entriesClient.listEntities({
-      queryOptions: { filter: `PartitionKey eq '${day}'` },
+      queryOptions: {
+        filter:
+          `PartitionKey eq '${ENTRIES_PARTITION}' and ` +
+          `createdAt ge '${start.toISOString()}' and createdAt lt '${end.toISOString()}'`,
+      },
     });
     for await (const entity of iterator) {
       entries.push({
         id: entity.rowKey,
-        date: entity.partitionKey,
+        date: dayFromCreatedAt(entity.createdAt),
         name: entity.name,
         overallScore: entity.overallScore,
         stages: JSON.parse(entity.stagesJson),
@@ -177,10 +197,13 @@ class TableStore {
     await this.ensureTables();
     const days = new Set();
     const iterator = this.entriesClient.listEntities({
-      queryOptions: { select: ['PartitionKey'] },
+      queryOptions: {
+        filter: `PartitionKey eq '${ENTRIES_PARTITION}'`,
+        select: ['createdAt'],
+      },
     });
     for await (const entity of iterator) {
-      days.add(entity.partitionKey);
+      days.add(dayFromCreatedAt(entity.createdAt));
     }
     return [...days].sort().reverse();
   }

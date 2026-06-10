@@ -35,6 +35,22 @@ test('listDays returns distinct days with entries, newest first', () => {
   assert.deepEqual(store.listDays(), ['2026-01-03', '2026-01-01']);
 });
 
+test('editing createdAt moves an entry to the matching day', () => {
+  const store = new InMemoryStore();
+  store.addEntry('A', sampleAnalysis(1000), new Date('2026-01-01T12:00:00Z'));
+
+  assert.equal(store.getDayEntries('2026-01-01').length, 1);
+  assert.deepEqual(store.listDays(), ['2026-01-01']);
+
+  store.entries[0].createdAt = '2026-01-02T12:00:00Z';
+
+  assert.equal(store.getDayEntries('2026-01-01').length, 0);
+  const movedEntries = store.getDayEntries('2026-01-02');
+  assert.equal(movedEntries.length, 1);
+  assert.equal(movedEntries[0].date, '2026-01-02');
+  assert.deepEqual(store.listDays(), ['2026-01-02']);
+});
+
 test('daily leaderboard calculates top overall and stage leaders', () => {
   const leaderboard = buildDailyLeaderboard([
     { name: 'A', overallScore: 1200, stages: sampleAnalysis(1200).stages },
