@@ -137,6 +137,17 @@ test('upload endpoint stores analyzed screenshot data', async () => {
   assert.equal(leaderboardResponse.body.leaderboard.topOverall.name, 'Taylor');
 });
 
+test('leaderboard endpoint returns empty leaderboard for arbitrary day without entries', async () => {
+  const app = createApp();
+  const response = await request(app).get('/api/leaderboard?day=2020-01-01');
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.day, '2020-01-01');
+  assert.deepEqual(response.body.entries, []);
+  assert.equal(response.body.leaderboard.topOverall, null);
+  assert.deepEqual(response.body.leaderboard.topFiveOverall, []);
+});
+
 test('validateAnalysis converts meters to kilometers using {distance, distanceUnit}', () => {
   const stage = (distance, distanceUnit) => ({ score: 1000, distance, distanceUnit, yearsOff: 1 });
   const data = {
