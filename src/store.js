@@ -7,6 +7,12 @@ function today() {
 }
 
 function dayFromCreatedAt(createdAt) {
+  if (!createdAt) {
+    return '';
+  }
+  if (createdAt instanceof Date) {
+    return createdAt.toISOString().slice(0, 10);
+  }
   return String(createdAt).slice(0, 10);
 }
 
@@ -58,12 +64,13 @@ class InMemoryStore {
   }
 
   getDayEntries(day = today()) {
-    return this.entries
-      .filter((entry) => dayFromCreatedAt(entry.createdAt) === day)
-      .map((entry) => ({
-        ...entry,
-        date: dayFromCreatedAt(entry.createdAt),
-      }));
+    return this.entries.flatMap((entry) => {
+      const date = dayFromCreatedAt(entry.createdAt);
+      if (date !== day) {
+        return [];
+      }
+      return [{ ...entry, date }];
+    });
   }
 
   getDayLeaderboard(day = today()) {

@@ -28,7 +28,7 @@ async function run() {
       await tableClient.getEntity(TARGET_PARTITION, rowKey);
       destinationExists = true;
     } catch (error) {
-      if (error.statusCode !== 404) {
+      if (error.statusCode !== 404 && error.code !== 'ResourceNotFound') {
         throw error;
       }
     }
