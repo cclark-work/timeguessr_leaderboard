@@ -180,20 +180,20 @@
       return new Date().toISOString().slice(0, 10);
     }
 
-    function isValidDay(day) {
+    function isValidDayFormat(day) {
       return /^\d{4}-\d{2}-\d{2}$/.test(day);
     }
 
     async function loadDays(preferred) {
       const today = todayStr();
       dayInput.max = today;
-      const selected = isValidDay(preferred) && preferred <= today ? preferred : today;
+      const selected = isValidDayFormat(preferred) && preferred <= today ? preferred : today;
       dayInput.value = selected;
 
       try {
         const response = await fetch('/api/days');
         const payload = await response.json();
-        const days = Array.isArray(payload.days) ? payload.days.filter(isValidDay).sort() : [];
+        const days = Array.isArray(payload.days) ? payload.days.filter(isValidDayFormat).sort() : [];
         if (days.length) {
           dayInput.min = days[0];
         } else {
