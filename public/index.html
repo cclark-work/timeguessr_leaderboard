@@ -192,15 +192,11 @@
       const payload = await response.json();
       const days = payload.days || [];
 
-      if (!days.length) {
-        dayInput.innerHTML = '<option value="">No scores yet</option>';
-        dayInput.disabled = true;
-        return;
-      }
-
       dayInput.disabled = false;
-      const selected = preferred && days.includes(preferred) ? preferred : days[0];
-      dayInput.innerHTML = days
+      const today = todayStr();
+      const allDays = days.includes(today) ? days : [today, ...days];
+      const selected = preferred && allDays.includes(preferred) ? preferred : allDays[0];
+      dayInput.innerHTML = allDays
         .map((d) => `<option value="${d}"${d === selected ? ' selected' : ''}>${esc(formatDay(d))}</option>`)
         .join('');
       dayInput.value = selected;
