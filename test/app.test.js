@@ -229,18 +229,41 @@ test('validateAnalysis rejects stage with missing distanceUnit', () => {
   assert.throws(() => validateAnalysis(data), /Stage 3 has an unrecognized distanceUnit/);
 });
 
+test('validateAnalysis converts miles to kilometers', () => {
+  const stage = (distance, distanceUnit) => ({ score: 1000, distance, distanceUnit, yearsOff: 1 });
+  const data = {
+    overallScore: 5000,
+    stages: [
+      stage(2.6, 'mi'),
+      stage(31.7, 'miles'),
+      stage(1, 'MI'),
+      stage(0.5, 'mile'),
+      stage(100, 'km'),
+    ],
+  };
+
+  const result = validateAnalysis(data);
+  const closeTo = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} ~ ${expected}`);
+
+  closeTo(result.stages[0].distanceKm, 2.6 * 1.609344);
+  closeTo(result.stages[1].distanceKm, 31.7 * 1.609344);
+  closeTo(result.stages[2].distanceKm, 1.609344);
+  closeTo(result.stages[3].distanceKm, 0.5 * 1.609344);
+  assert.equal(result.stages[4].distanceKm, 100);
+});
+
 test('validateAnalysis rejects stage with unknown distanceUnit', () => {
   const data = {
     overallScore: 5000,
     stages: Array.from({ length: 5 }, (_, i) => ({
       score: 1000,
       distance: 100,
-      distanceUnit: i === 1 ? 'miles' : 'km',
+      distanceUnit: i === 1 ? 'furlongs' : 'km',
       yearsOff: 0,
     })),
   };
 
-  assert.throws(() => validateAnalysis(data), /Stage 2 has an unrecognized distanceUnit "miles"/);
+  assert.throws(() => validateAnalysis(data), /Stage 2 has an unrecognized distanceUnit "furlongs"/);
 });
 
 test('validateAnalysis rejects stage with missing distance', () => {
