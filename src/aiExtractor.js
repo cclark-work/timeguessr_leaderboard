@@ -2,9 +2,11 @@
  * Convert a stage's raw distance value + unit to kilometres.
  *
  * Accepts the new AI shape { distance, distanceUnit } where distanceUnit is
- * "m" or "km" (case-insensitive).  For backwards-compatibility with the text
- * fallback (which may still upload the legacy { distanceKm: number } shape),
- * a bare finite number in distanceKm is treated as already in km.
+ * "mi" (miles), "km", or "m" (case-insensitive).  Everything is normalized to
+ * kilometres so the leaderboard stays comparable across days.  For
+ * backwards-compatibility with the text fallback (which may still upload the
+ * legacy { distanceKm: number } shape), a bare finite number in distanceKm is
+ * treated as already in km.
  *
  * Throws a descriptive error (naming the 1-based stage index) for any
  * missing or unrecognized value so validation failures are easy to diagnose.
@@ -18,8 +20,9 @@ function resolveDistanceKm(stage, index) {
     const unit = typeof stage.distanceUnit === 'string' ? stage.distanceUnit.trim().toLowerCase() : '';
     if (unit === 'km') return stage.distance;
     if (unit === 'm') return stage.distance / 1000;
+    if (unit === 'mi' || unit === 'mile' || unit === 'miles') return stage.distance * 1.609344;
     throw new Error(
-      `Stage ${index + 1} has an unrecognized distanceUnit "${stage.distanceUnit}". Expected "m" or "km".`,
+      `Stage ${index + 1} has an unrecognized distanceUnit "${stage.distanceUnit}". Expected "mi", "km", or "m".`,
     );
   }
 
@@ -92,8 +95,9 @@ async function extractWithAzureOpenAI(imageBuffer) {
             {
               type: 'text',
               text:
-                'Return JSON: {"overallScore":number,"stages":[{"score":number,"distance":number,"distanceUnit":"km"|"m","yearsOff":number} x5]}. ' +
-                'For each stage, read the distance number and the unit (m or km) as separate fields.',
+                'Return JSON: {"overallScore":number,"stages":[{"score":number,"distance":number,"distanceUnit":"mi"|"km"|"m","yearsOff":number} x5]}. ' +
+                'For each stage, read the distance number and its unit as separate fields. ' +
+                'Use "mi" for miles, "km" for kilometres, "m" for metres.',
             },
             {
               type: 'image_url',

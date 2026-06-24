@@ -260,7 +260,7 @@
 
       topOverallNode.innerHTML = renderTopOverall(lb.topFiveOverall);
       stageScoresNode.innerHTML = renderStageTable(lb.highestStageScores, 'score', 'Score', fmt);
-      stageDistancesNode.innerHTML = renderStageTable(lb.closestDistances, 'distanceKm', 'Distance', (v) => `${fmt(v)} km`);
+      stageDistancesNode.innerHTML = renderStageTable(lb.closestDistances, 'distanceKm', 'Distance', (v) => `${(v * 0.621371).toFixed(1)} mi`);
       stageYearsNode.innerHTML = renderStageTable(lb.closestYears, 'yearsOff', 'Years off', (v) => `${fmt(v)} yr`);
     }
 
