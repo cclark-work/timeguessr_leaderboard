@@ -8,10 +8,13 @@
  * still upload the legacy { distanceKm: number } shape), a bare finite number
  * in distanceKm is treated as already in km.
  *
- * When distances are displayed in miles, values less than 1 mile are shown
- * with 3 decimal places of precision; to preserve that behaviour when the
- * AI returns other units we round the computed miles to 3 decimal places and
- * convert back to kilometres before returning.
+ * When distances are displayed in miles, values less than 1 mile should be
+ * shown with 3 decimal places of precision. To preserve that behaviour when
+ * the AI already reported distances in miles, the extractor rounds the
+ * computed miles to 3 decimal places and converts that rounded miles value
+ * back to kilometres before returning. Other units (km, m, ft, or legacy
+ * distanceKm) are converted to kilometres without applying the miles
+ * rounding so unit-preserving conversions remain exact where possible.
  *
  * Throws a descriptive error (naming the 1-based stage index) for any
  * missing or unrecognized value so validation failures are easy to diagnose.
@@ -61,14 +64,16 @@ function validateAnalysis(data) {
       }
       let distanceKm = resolveDistanceKm(stage, index);
 
-      // When distances are shown in miles, values under 1 mile should be
-      // displayed with 3 decimal places. To preserve that display precision
-      // while keeping internal data in kilometres, round the computed miles to
-      // 3 decimal places and convert back to kilometres.
-      const miles = distanceKm / 1.609344;
-      if (miles < 1) {
-        const roundedMiles = Number(miles.toFixed(3));
-        distanceKm = roundedMiles * 1.609344;
+      // Apply rounding-to-3-decimal-miles ONLY when the AI reported miles
+      // (distanceUnit 'mi'|'mile'|'miles'). This preserves exact conversions
+      // from other units (m, km, ft, or legacy distanceKm) which tests expect.
+      const unit = typeof stage.distanceUnit === 'string' ? stage.distanceUnit.trim().toLowerCase() : '';
+      if (unit === 'mi' || unit === 'mile' || unit === 'miles') {
+        const miles = distanceKm / 1.609344;
+        if (miles < 1) {
+          const roundedMiles = Number(miles.toFixed(3));
+          distanceKm = roundedMiles * 1.609344;
+        }
       }
 
       if (!Number.isFinite(stage.yearsOff)) {
