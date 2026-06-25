@@ -2,17 +2,17 @@
  * Convert a stage's raw distance value + unit to kilometres.
  *
  * Accepts the new AI shape { distance, distanceUnit } where distanceUnit is
- * "mi" (miles), "km", or "m" (case-insensitive).  Everything is normalized to
- * kilometres so the leaderboard stays comparable across days.  For
- * backwards-compatibility with the text fallback (which may still upload the
- * legacy { distanceKm: number } shape), a bare finite number in distanceKm is
- * treated as already in km.
+ * "mi" (miles), "km", "m" (metres), or "ft" (feet) (case-insensitive).
+ * Everything is normalized to kilometres so the leaderboard stays comparable
+ * across days. For backwards-compatibility with the text fallback (which may
+ * still upload the legacy { distanceKm: number } shape), a bare finite number
+ * in distanceKm is treated as already in km.
  *
  * Throws a descriptive error (naming the 1-based stage index) for any
  * missing or unrecognized value so validation failures are easy to diagnose.
  */
 function resolveDistanceKm(stage, index) {
-  // New shape: { distance: number, distanceUnit: "m"|"km" }
+  // New shape: { distance: number, distanceUnit: "m"|"km"|"ft"|"mi" }
   if (stage.distance !== undefined || stage.distanceUnit !== undefined) {
     if (!Number.isFinite(stage.distance)) {
       throw new Error(`Stage ${index + 1} is missing a valid distance.`);
@@ -20,9 +20,10 @@ function resolveDistanceKm(stage, index) {
     const unit = typeof stage.distanceUnit === 'string' ? stage.distanceUnit.trim().toLowerCase() : '';
     if (unit === 'km') return stage.distance;
     if (unit === 'm') return stage.distance / 1000;
+    if (unit === 'ft' || unit === 'foot' || unit === 'feet') return stage.distance * 0.0003048;
     if (unit === 'mi' || unit === 'mile' || unit === 'miles') return stage.distance * 1.609344;
     throw new Error(
-      `Stage ${index + 1} has an unrecognized distanceUnit "${stage.distanceUnit}". Expected "mi", "km", or "m".`,
+      `Stage ${index + 1} has an unrecognized distanceUnit "${stage.distanceUnit}". Expected "mi", "km", "m", or "ft".`,
     );
   }
 
@@ -95,9 +96,9 @@ async function extractWithAzureOpenAI(imageBuffer) {
             {
               type: 'text',
               text:
-                'Return JSON: {"overallScore":number,"stages":[{"score":number,"distance":number,"distanceUnit":"mi"|"km"|"m","yearsOff":number} x5]}. ' +
+                'Return JSON: {"overallScore":number,"stages":[{"score":number,"distance":number,"distanceUnit":"mi"|"km"|"m"|"ft","yearsOff":number} x5]}. ' +
                 'For each stage, read the distance number and its unit as separate fields. ' +
-                'Use "mi" for miles, "km" for kilometres, "m" for metres.',
+                'Use "mi" for miles, "km" for kilometres, "m" for metres, and "ft" for feet.',
             },
             {
               type: 'image_url',
