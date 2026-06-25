@@ -8,6 +8,11 @@
  * still upload the legacy { distanceKm: number } shape), a bare finite number
  * in distanceKm is treated as already in km.
  *
+ * When distances are displayed in miles, values less than 1 mile are shown
+ * with 3 decimal places of precision; to preserve that behaviour when the
+ * AI returns other units we round the computed miles to 3 decimal places and
+ * convert back to kilometres before returning.
+ *
  * Throws a descriptive error (naming the 1-based stage index) for any
  * missing or unrecognized value so validation failures are easy to diagnose.
  */
@@ -54,7 +59,18 @@ function validateAnalysis(data) {
       if (!Number.isFinite(stage.score)) {
         throw new Error(`Stage ${index + 1} is missing a valid score.`);
       }
-      const distanceKm = resolveDistanceKm(stage, index);
+      let distanceKm = resolveDistanceKm(stage, index);
+
+      // When distances are shown in miles, values under 1 mile should be
+      // displayed with 3 decimal places. To preserve that display precision
+      // while keeping internal data in kilometres, round the computed miles to
+      // 3 decimal places and convert back to kilometres.
+      const miles = distanceKm / 1.609344;
+      if (miles < 1) {
+        const roundedMiles = Number(miles.toFixed(3));
+        distanceKm = roundedMiles * 1.609344;
+      }
+
       if (!Number.isFinite(stage.yearsOff)) {
         throw new Error(`Stage ${index + 1} is missing a valid yearsOff.`);
       }
