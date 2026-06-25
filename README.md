@@ -43,6 +43,12 @@ When Azure settings are not present you can upload a JSON fallback instead. The 
 }
 ```
 
+Display precision and rounding
+
+- When distances are displayed in miles, values under 1 mile are shown with 3 decimal places of precision (for example: `0.038 miles`).
+- To keep leaderboard comparisons stable regardless of the unit returned by the AI, the extractor rounds the computed miles to 3 decimal places and converts that rounded miles value back to kilometres for internal storage. This preserves the displayed precision while keeping all internal comparisons in kilometres.
+- Conversion reference: 1 ft = 0.3048 m → 0.0003048 km; 1 mi = 1.609344 km.
+
 Legacy JSON (text fallback) example using distanceKm:
 
 ```json
