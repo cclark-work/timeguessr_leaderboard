@@ -8,7 +8,7 @@ Web app for uploading Timeguessr result screenshots and tracking daily leaders.
 - Analyze and extract:
   - overall score
   - each of 5 stage scores
-  - each stage distance (read in the unit shown on screen — miles, km, or m — and normalized to km internally; shown in miles)
+  - each stage distance (read in the unit shown on screen — miles, km, m, or ft — and normalized to km internally; shown in miles)
   - each stage year error
 - Name lookup/autocomplete based on previously uploaded names.
 - Daily leaderboard (with a date picker to view past days) showing:
@@ -26,7 +26,24 @@ If these environment variables are set, uploaded screenshots are sent to Azure O
 - `AZURE_OPENAI_KEY`
 - `AZURE_OPENAI_API_VERSION` (optional, defaults to `2024-10-21`)
 
-The AI reads each stage's distance as a number plus its unit (`{ "distance": 2.6, "distanceUnit": "mi" }`, where `distanceUnit` is `mi`, `km`, or `m`) and the app converts to km. When Azure settings are not present, the app uses a local fallback parser that expects the uploaded file content to be JSON; it also accepts the legacy already-in-km shape below:
+The AI reads each stage's distance as a number plus its unit (for example: `{ "distance": 568.0, "distanceUnit": "mi" }`, where `distanceUnit` is `mi`, `km`, `m`, or `ft`) and the app converts the value to kilometres internally for comparison.
+
+When Azure settings are not present you can upload a JSON fallback instead. The app accepts either the legacy `distanceKm` shape or the newer `{ distance, distanceUnit }` shape. Example new AI output:
+
+```json
+{
+  "overallScore": 12345,
+  "stages": [
+    { "score": 3000, "distance": 568.0, "distanceUnit": "mi", "yearsOff": 2 },
+    { "score": 2500, "distance": 400.2, "distanceUnit": "mi", "yearsOff": 1 },
+    { "score": 2400, "distance": 200.5, "distanceUnit": "ft", "yearsOff": 8 },
+    { "score": 2200, "distance": 110.2, "distanceUnit": "mi", "yearsOff": 4 },
+    { "score": 2245, "distance": 922.9, "distanceUnit": "mi", "yearsOff": 6 }
+  ]
+}
+```
+
+Legacy JSON (text fallback) example using distanceKm:
 
 ```json
 {
